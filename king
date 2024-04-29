@@ -1,0 +1,88 @@
+import http.client
+import time
+import json
+from telegram import Update,Bot
+import asyncio
+import threading
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, Updater
+items2 = {'Glory AK47': 2120,
+         'Tempered Mask': 146,
+         'Crime Bag': 74,
+         'Frostbite': 68,
+         'Alien Red': 108,
+         'Christmas Lights': 107,
+         'Fire Jacket': 385,
+         'Plate Carrier - Black': 65,
+         'Legendary Gold Facemask': 70,
+         'Horror Bag': 450,
+         'Big Grin': 630,
+         'Glowing Skull': 90,
+         'Demonic Pistol': 58,
+         'Banana Eoka': 65,
+         'Freshly Dug Grave': 325,
+         'Hot Tempered Longsword': 160,
+         'Tempered Mp5': 330,
+         'Creepy Clown Bandana': 365,
+         'Stainless Facemask': 46,
+         "Train Conductor Miner's Hat": 25,
+         'Scudpunk Hoodie': 18,
+         "Retro Car Parts Chestplate" : 0.28}
+d = "+"
+d2 = ""
+loop = 0
+allerted = []
+stamp = 60
+items = {}
+for d in items2.keys():
+    items[d.lower()] = items2[d]
+editted_msg = False
+def fetch_data() -> dict:
+    global d,d2
+    d2 = "data aranıyor"
+    conn = http.client.HTTPSConnection("cs.deals")
+    payload = "{\"appid\":252490}"
+    headers = { 'content-type': "application/json" }
+    conn.request("POST", "/API/IPricing/GetLowestPrices/v1", payload, headers)
+    res = conn.getresponse()
+    data = res.read()
+    resp = json.loads(data.decode("utf-8"))
+    d2 = "data çekildi"
+    if not "response" in resp:
+        print("!!!",resp)
+    for i in resp["response"]["items"]:
+        if i["marketname"].lower() in items and items[i["marketname"].lower()] > float(i["lowest_price"]):
+            print(">>>>>",i)
+            if not(i["marketname"] in allerted):
+                d2 = "uuz ürün bulundu"
+                #allerted.append(i["marketname"])
+                return i
+            pass
+
+async def send_message_periodically( chat_id: int):
+    global loop, allerted,d,d2
+    while True:
+        try:
+            resp = fetch_data()
+        except:
+            resp = "hata ile karşılaşldı" + d + d2
+            d=",-,"
+            d2=""
+        if resp:
+            message = f"Hello, here is the latest data: {resp}"
+            await bot.send_message(chat_id, message)
+        await asyncio.sleep(stamp)  # 300 seconds = 5 minutes
+        loop += 1
+        if loop*stamp % 30 == 0:
+            loop = 0
+            allerted = []
+            
+        
+
+TG_TOKEN = '7043903963:AAF4Y5wgayT_PwRYVX4yM91TXETlFSYoffo'
+bot = Bot(token=TG_TOKEN)
+
+
+async def main():
+    chat_id = "5448895488" 
+    await asyncio.create_task(send_message_periodically(chat_id))
+asyncio.run(main())
